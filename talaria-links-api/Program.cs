@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using talaria_links_api.Entities;
 using talaria_links_api.Middleware;
+using talaria_links_api.Options;
 using talaria_links_api.Persistence;
 using talaria_links_api.Services.Implementations;
 using talaria_links_api.Services.Interfaces;
@@ -12,6 +13,11 @@ using talaria_links_api.Services.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Services.AddOptions<talaria_links_api.Options.LinkOptions>()
+    .Bind(builder.Configuration.GetSection(talaria_links_api.Options.LinkOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
@@ -36,7 +42,8 @@ builder.Services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
 
 builder.Services
     .AddScoped<ITokenService, TokenService>()
-    .AddScoped<IAuthService, AuthService>();
+    .AddScoped<IAuthService, AuthService>()
+    .AddScoped<IShortUrlService, ShortUrlService>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

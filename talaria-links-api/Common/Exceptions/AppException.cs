@@ -13,4 +13,7 @@
 
     public sealed class NotFoundException(string message) : 
         AppException(message, StatusCodes.Status404NotFound);
+
+    public sealed class BadRequestException(string message) :
+        AppException(message, StatusCodes.Status400BadRequest);
 }
