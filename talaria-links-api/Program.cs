@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using talaria_links_api.Common;
 using talaria_links_api.Entities;
 using talaria_links_api.Middleware;
 using talaria_links_api.Options;
@@ -23,6 +25,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// JWT configuration
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -36,7 +39,39 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:Token"]!)),
             ValidateIssuerSigningKey = true
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                ctx.Token = ctx.Request.Cookies[AuthCookie.Name];
+                return Task.CompletedTask;
+            }
+        };
     });
+
+builder.Services.AddAuthorization();
+
+//Cors configuracion
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
+builder.Services.AddCors(o => o.AddPolicy("web", p => p
+    .WithOrigins(allowedOrigins)
+    .AllowCredentials()
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddFixedWindowLimiter("auth", w =>
+    {
+        w.PermitLimit = 10;
+        w.Window = TimeSpan.FromMinutes(1);
+    });
+});
 
 builder.Services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
 
@@ -63,6 +98,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("web");
+
+app.UseRateLimiter();
 
 app.UseAuthentication(); 
 

@@ -4,13 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using System.Security.Claims;
+using talaria_links_api.Common;
 using talaria_links_api.DTOs.Auth;
 using talaria_links_api.Services.Interfaces;
 
 namespace talaria_links_api.Controllers
 {
     [Route("api/auth")]
-    [Controller]
+    [ApiController]
     public class AuthController(IAuthService auth) : ControllerBase
     {
         [HttpPost("register")]
@@ -21,6 +22,7 @@ namespace talaria_links_api.Controllers
         public async Task<ActionResult<AuthResponse>> Register([FromBody]RegisterRequest request, CancellationToken ct)
         {
             var response = await auth.RegisterAsync(request, ct);
+            SetAuthCookie(response.AccessToken, response.ExpiresAt);
             return CreatedAtAction(nameof(Me), null, response);
         }
 
@@ -30,7 +32,20 @@ namespace talaria_links_api.Controllers
         [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<AuthResponse>> Login([FromBody]LoginRequest request, CancellationToken ct)
-        => Ok(await auth.LoginAsync(request, ct));
+        {
+            var result = await auth.LoginAsync(request, ct);
+            SetAuthCookie(result.AccessToken, result.ExpiresAt);
+            return Ok(result);
+        }
+
+        [HttpPost("logout")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete(AuthCookie.Name, BuildCookieOptions());
+            return NoContent();
+        }
 
         [HttpGet("me")]
         [Authorize]
@@ -38,11 +53,23 @@ namespace talaria_links_api.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<UserResponse>> Me(CancellationToken ct)
         {
-            var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-            if (!Guid.TryParse(sub, out var accountId))
-                return Unauthorized();
-
-            return Ok(await auth.GetCurrentUserAsync(accountId, ct));
+            var user = User.ToCurrentUser();
+            return Ok(await auth.GetCurrentUserAsync(user.Id, ct));
         }
+
+        private void SetAuthCookie(string token, DateTime expiresAt)
+        {
+            var options = BuildCookieOptions();
+            options.Expires = expiresAt;
+            Response.Cookies.Append(AuthCookie.Name, token, options);
+        }
+
+        private static CookieOptions BuildCookieOptions() => new()
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax,
+            Path = "/"
+        };
     }
 }
