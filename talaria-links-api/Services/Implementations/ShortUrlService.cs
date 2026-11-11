@@ -5,7 +5,9 @@ using System.Security.Cryptography;
 using talaria_links_api.Common;
 using talaria_links_api.Common.Exceptions;
 using talaria_links_api.DTOs.Links;
+using talaria_links_api.DTOs.Paging;
 using talaria_links_api.Entities;
+using talaria_links_api.Enums;
 using talaria_links_api.Persistence;
 using talaria_links_api.Services.Interfaces;
 using LinkOptions = talaria_links_api.Options.LinkOptions;
@@ -18,6 +20,7 @@ namespace talaria_links_api.Services.Implementations
     {
         private const string CodeAlphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         private const int GeneratedCodeLength = 7;
+        private const int MaxPageSize = 50; 
         private readonly string _baseUrl = options.Value.BaseUrl.TrimEnd('/');
 
         public async Task<ShortUrlResponse> GetByIdAsync(int id, CurrentUser user, CancellationToken ct)
@@ -27,6 +30,20 @@ namespace talaria_links_api.Services.Implementations
 
             return await Project(query).SingleOrDefaultAsync(ct)
                 ?? throw new NotFoundException("Link not found.");
+        }
+
+        public async Task<PagedResponse<ShortUrlResponse>> GetMineAsync(CurrentUser user, LinkVisibility visibility, int page, int pageSize, CancellationToken ct)
+        {
+            var query = db.ShortUrls.AsNoTracking().Where(s => s.AccountId == user.Id);
+
+            query = visibility switch
+            {
+                LinkVisibility.Public => query.Where(s => s.IsPublic),
+                LinkVisibility.Private => query.Where(s => !s.IsPublic),
+                _ => query
+            };
+
+            return await ToPagedAsync(Project(query.OrderByDescending(s => s.CreatedAt)), page, pageSize, ct);
         }
 
         public async Task<ShortUrlResponse> CreateAsync(CreateShortUrlRequest request, CurrentUser user, CancellationToken ct)
@@ -79,6 +96,17 @@ namespace talaria_links_api.Services.Implementations
                 s.Account.Username,
                 s.CreatedAt,
                 s.UpdatedAt));
+        }
+
+        private static async Task<PagedResponse<T>> ToPagedAsync<T>(IQueryable<T> query, int page, int pageSize, CancellationToken ct)
+        {
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
+            var total = await query.CountAsync(ct);
+            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+            return new PagedResponse<T>(items, page, pageSize, total);
         }
 
         private async Task<string> ValidateCustomCodeAsync(string code, CancellationToken ct)

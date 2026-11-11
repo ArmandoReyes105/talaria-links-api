@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using talaria_links_api.Common;
 using talaria_links_api.DTOs.Links;
+using talaria_links_api.DTOs.Paging;
+using talaria_links_api.Enums;
 using talaria_links_api.Services.Interfaces;
 
 namespace talaria_links_api.Controllers
@@ -20,6 +22,18 @@ namespace talaria_links_api.Controllers
         {
             var created = await links.CreateAsync(request, User.ToCurrentUser(), ct);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+
+        [HttpGet("mine")]
+        [ProducesResponseType<PagedResponse<ShortUrlResponse>>(StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponse<ShortUrlResponse>>> GetMine(
+            [FromQuery] LinkVisibility visibility = LinkVisibility.All,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            CancellationToken ct = default)
+        {
+            var result = await links.GetMineAsync(User.ToCurrentUser(), visibility, page, pageSize, ct);
+            return result; 
         }
 
         [HttpGet("{id:int}")]
