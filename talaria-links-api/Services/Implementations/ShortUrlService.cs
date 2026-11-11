@@ -15,6 +15,7 @@ using LinkOptions = talaria_links_api.Options.LinkOptions;
 namespace talaria_links_api.Services.Implementations
 {
     public class ShortUrlService(
+        TimeProvider time,
         ApplicationDbContext db,
         IOptions<LinkOptions> options) : IShortUrlService
     {
@@ -69,6 +70,25 @@ namespace talaria_links_api.Services.Implementations
 
             return await GetByIdAsync(link.Id, user, ct);
         }
+
+        public async Task<ShortUrlResponse> UpdateAsync(CurrentUser user, int id, UpdateShortUrlRequest request, CancellationToken ct)
+        {
+            var link = 
+                await db.ShortUrls.SingleOrDefaultAsync(s => s.Id == id && s.AccountId == user.Id, ct)
+                ?? throw new NotFoundException("Link was not found");
+
+            link.OriginalUrl = NormalizeUrl(request.OriginalUrl);
+            link.Title =
+                string.IsNullOrWhiteSpace(request.Title)
+                ? null
+                : request.Title.Trim();
+            link.IsPublic = request.IsPublic;
+            link.UpdatedAt = time.GetUtcNow().UtcDateTime;
+
+            await db.SaveChangesAsync(ct);
+            return await GetByIdAsync(id, user, ct);
+        }
+
 
         public async Task DeleteAsync(CurrentUser user, int id, CancellationToken ct)
         {

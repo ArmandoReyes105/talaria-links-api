@@ -9,6 +9,11 @@ namespace talaria_links_api.DTOs.Links
     [MaxLength(150)] string? Title,
     bool IsPublic = false);
 
+    public sealed record UpdateShortUrlRequest(
+        [Required, MaxLength(2048)] string OriginalUrl,
+        [MaxLength(150)] string? Title,
+        bool IsPublic);
+
     public sealed record ShortUrlResponse(
     int Id,
     string Code,
