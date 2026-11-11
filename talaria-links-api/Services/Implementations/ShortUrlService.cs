@@ -70,6 +70,15 @@ namespace talaria_links_api.Services.Implementations
             return await GetByIdAsync(link.Id, user, ct);
         }
 
+        public async Task DeleteAsync(CurrentUser user, int id, CancellationToken ct)
+        {
+            var link = 
+                await db.ShortUrls.SingleOrDefaultAsync(s => s.Id == id && (s.AccountId == user.Id || user.IsAdmin), ct) 
+                ?? throw new NotFoundException("Link not found");
+            db.ShortUrls.Remove(link);
+            await db.SaveChangesAsync(ct);
+        }
+
         private async Task<string> GenerateUniqueCodeAsync(CancellationToken ct)
         {
             for (var attempt = 0; attempt < 5; attempt++)

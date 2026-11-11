@@ -41,5 +41,14 @@ namespace talaria_links_api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ShortUrlResponse>> GetById(int id, CancellationToken ct)
         => Ok(await links.GetByIdAsync(id, User.ToCurrentUser(), ct));
+
+        [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> Delete(int id, CancellationToken ct)
+        {
+            await links.DeleteAsync(User.ToCurrentUser(), id, ct); 
+            return NoContent();
+        }
     }
 }
