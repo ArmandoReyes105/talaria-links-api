@@ -78,7 +78,8 @@ builder.Services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
 builder.Services
     .AddScoped<ITokenService, TokenService>()
     .AddScoped<IAuthService, AuthService>()
-    .AddScoped<IShortUrlService, ShortUrlService>();
+    .AddScoped<IShortUrlService, ShortUrlService>()
+    .AddScoped<IAccountService, AccountService>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

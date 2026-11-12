@@ -21,7 +21,6 @@ namespace talaria_links_api.Services.Implementations
     {
         private const string CodeAlphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         private const int GeneratedCodeLength = 7;
-        private const int MaxPageSize = 50; 
         private readonly string _baseUrl = options.Value.BaseUrl.TrimEnd('/');
 
         public async Task<ShortUrlResponse> GetByIdAsync(int id, CurrentUser user, CancellationToken ct)
@@ -48,7 +47,7 @@ namespace talaria_links_api.Services.Implementations
                     .ThenByDescending(s => s.Id)
             };
 
-            return await ToPagedAsync(Project(query), page, pageSize, ct);
+            return await Project(query).ToPagedAsync(page, pageSize, ct);
         }
 
         public async Task<PagedResponse<ShortUrlResponse>> GetMineAsync(CurrentUser user, LinkVisibility visibility, int page, int pageSize, CancellationToken ct)
@@ -62,7 +61,25 @@ namespace talaria_links_api.Services.Implementations
                 _ => query
             };
 
-            return await ToPagedAsync(Project(query.OrderByDescending(s => s.CreatedAt)), page, pageSize, ct);
+            return await Project(query.OrderByDescending(s => s.CreatedAt)).ToPagedAsync(page, pageSize, ct);
+        }
+
+        public async Task<PagedResponse<ShortUrlResponse>> GetAllAsync(string? search, int page, int pageSize, CancellationToken ct)
+        {
+            var query = db.ShortUrls.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var pattern = LikePattern.Contains(search);
+                query = query.Where(s =>
+                    EF.Functions.ILike(s.Code, pattern, LikePattern.EscapeChar) ||
+                    EF.Functions.ILike(s.Account.Username, pattern, LikePattern.EscapeChar));
+            }
+
+            return await Project(query
+                    .OrderByDescending(s => s.CreatedAt)
+                    .ThenByDescending(s => s.Id))
+                .ToPagedAsync(page, pageSize, ct);
         }
 
         public async Task<ShortUrlResponse> CreateAsync(CreateShortUrlRequest request, CurrentUser user, CancellationToken ct)
@@ -168,17 +185,6 @@ namespace talaria_links_api.Services.Implementations
                 s.Account.Username,
                 s.CreatedAt,
                 s.UpdatedAt));
-        }
-
-        private static async Task<PagedResponse<T>> ToPagedAsync<T>(IQueryable<T> query, int page, int pageSize, CancellationToken ct)
-        {
-            page = Math.Max(1, page);
-            pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
-
-            var total = await query.CountAsync(ct);
-            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-
-            return new PagedResponse<T>(items, page, pageSize, total);
         }
 
         private async Task<string> ValidateCustomCodeAsync(string code, CancellationToken ct)
