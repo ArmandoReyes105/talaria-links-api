@@ -90,6 +90,8 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+await AdminSeeder.SeedAsync(app.Services, app.Configuration);
+
 app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
