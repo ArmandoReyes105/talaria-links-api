@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.RazorPages;
-using talaria_links_api.Common;
+﻿using talaria_links_api.Common;
 using talaria_links_api.DTOs.Links;
 using talaria_links_api.DTOs.Paging;
 using talaria_links_api.Enums;
@@ -14,5 +13,6 @@ namespace talaria_links_api.Services.Interfaces
         Task DeleteAsync(CurrentUser user, int id, CancellationToken ct);
         Task<ShortUrlResponse> UpdateAsync(CurrentUser user, int id, UpdateShortUrlRequest request, CancellationToken ct);
         Task<string> ResolveAndTrackAsync(string code, string? referrer, string? userAgent, CancellationToken ct);
+        Task<PagedResponse<ShortUrlResponse>> GetPublicAsync(PublicLinkSort sort, int page, int pageSize, CancellationToken ct);
     }
 }

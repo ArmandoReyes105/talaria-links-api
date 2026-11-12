@@ -36,6 +36,18 @@ namespace talaria_links_api.Controllers
             return result; 
         }
 
+        [HttpGet("public")]
+        [AllowAnonymous]
+        [ProducesResponseType<PagedResponse<ShortUrlResponse>>(StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponse<ShortUrlResponse>>> GetPublic(
+            [FromQuery] PublicLinkSort sort = PublicLinkSort.Newest,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            CancellationToken ct = default)
+        {
+            return await links.GetPublicAsync(sort, page, pageSize, ct);
+        }
+
         [HttpGet("{id:int}")]
         [ProducesResponseType<ShortUrlResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

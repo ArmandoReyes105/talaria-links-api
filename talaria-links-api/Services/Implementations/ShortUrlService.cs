@@ -33,6 +33,24 @@ namespace talaria_links_api.Services.Implementations
                 ?? throw new NotFoundException("Link not found.");
         }
 
+        public async Task<PagedResponse<ShortUrlResponse>> GetPublicAsync(PublicLinkSort sort, int page, int pageSize, CancellationToken ct)
+        {
+            var query = db.ShortUrls.AsNoTracking().Where(s => s.IsPublic);
+
+            query = sort switch
+            {
+                PublicLinkSort.MostClicked => query
+                    .OrderByDescending(s => s.Clicks.Count())
+                    .ThenByDescending(s => s.CreatedAt)
+                    .ThenByDescending(s => s.Id),
+                _ => query
+                    .OrderByDescending(s => s.CreatedAt)
+                    .ThenByDescending(s => s.Id)
+            };
+
+            return await ToPagedAsync(Project(query), page, pageSize, ct);
+        }
+
         public async Task<PagedResponse<ShortUrlResponse>> GetMineAsync(CurrentUser user, LinkVisibility visibility, int page, int pageSize, CancellationToken ct)
         {
             var query = db.ShortUrls.AsNoTracking().Where(s => s.AccountId == user.Id);
