@@ -13,5 +13,6 @@ namespace talaria_links_api.Services.Interfaces
         Task<PagedResponse<ShortUrlResponse>> GetMineAsync(CurrentUser user, LinkVisibility visibility, int page, int pageSize, CancellationToken ct);
         Task DeleteAsync(CurrentUser user, int id, CancellationToken ct);
         Task<ShortUrlResponse> UpdateAsync(CurrentUser user, int id, UpdateShortUrlRequest request, CancellationToken ct);
+        Task<string> ResolveAndTrackAsync(string code, string? referrer, string? userAgent, CancellationToken ct);
     }
 }

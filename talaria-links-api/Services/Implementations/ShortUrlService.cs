@@ -88,8 +88,6 @@ namespace talaria_links_api.Services.Implementations
             await db.SaveChangesAsync(ct);
             return await GetByIdAsync(id, user, ct);
         }
-
-
         public async Task DeleteAsync(CurrentUser user, int id, CancellationToken ct)
         {
             var link = 
@@ -98,6 +96,33 @@ namespace talaria_links_api.Services.Implementations
             db.ShortUrls.Remove(link);
             await db.SaveChangesAsync(ct);
         }
+
+        public async Task<string> ResolveAndTrackAsync(string code, string? referrer, string? userAgent, CancellationToken ct)
+        {
+            var link = await db.ShortUrls
+                .AsNoTracking()
+                .Where(s => s.Code == code)
+                .Select(s => new { s.Id, s.OriginalUrl })
+                .SingleOrDefaultAsync(ct)
+                ?? throw new NotFoundException("Link not found");
+
+            db.Clicks.Add(new Click
+            {
+                ShortUrlId = link.Id,
+                ClickedAt = time.GetUtcNow().UtcDateTime,
+                Referrer = Truncate(referrer, 500),
+                UserAgent = Truncate(userAgent, 500)
+            });
+
+            await db.SaveChangesAsync();
+
+            return link.OriginalUrl;
+        }
+
+        private static string? Truncate(string? value, int max) =>
+            string.IsNullOrEmpty(value) ? null
+            : value.Length <= max ? value
+            : value[..max];
 
         private async Task<string> GenerateUniqueCodeAsync(CancellationToken ct)
         {
@@ -117,7 +142,7 @@ namespace talaria_links_api.Services.Implementations
             return query.Select(s => new ShortUrlResponse(
                 s.Id,
                 s.Code,
-                baseUrl + "/" + s.Code,
+                baseUrl + "/r/" + s.Code,
                 s.OriginalUrl,
                 s.Title,
                 s.IsPublic,

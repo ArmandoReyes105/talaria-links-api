@@ -68,7 +68,7 @@ namespace talaria_links_api.Controllers
         {
             HttpOnly = true,
             Secure = true,
-            SameSite = SameSiteMode.Lax,
+            SameSite = SameSiteMode.None,
             Path = "/"
         };
     }
